@@ -1,0 +1,42 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2022-2023 Roberto Sassu <roberto.sassu@huawei.com>
+#
+# Hello world test
+
+trap '_report_exit_and_cleanup _cleanup_env cleanup' SIGINT SIGTERM SIGSEGV EXIT
+
+# Base VERBOSE on the environment variable, if set.
+VERBOSE="${VERBOSE:-0}"
+
+cd "$(dirname "$0")" || exit "$FAIL"
+export PATH=$PWD/../src:$PWD:$PATH
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+. ../functions.sh
+
+cleanup() {
+	return "$OK"
+}
+
+# This tests succeeds only if the test runs in the new environment, if the
+# script is executed as a regular user.
+check_user() {
+	if [ "$(whoami)" != "root" ]; then
+		echo "${RED}Test script not executed as root${NORM}"
+		return "$FAIL"
+	fi
+
+	return "$OK"
+}
+
+# Run in the new environment if TST_ENV is set.
+_run_env "$TST_KERNEL" "$PWD/$(basename "$0")" "TST_ENV=$TST_ENV TST_KERNEL=$TST_KERNEL PATH=$PATH LD_LIBRARY_PATH=$LD_LIBRARY_PATH VERBOSE=$VERBOSE"
+
+# Exit from the creator of the new environment.
+_exit_env "$TST_KERNEL"
+
+# Mount filesystems in the new environment.
+_init_env
+
+expect_pass check_user
